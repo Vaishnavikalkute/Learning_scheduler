@@ -1,0 +1,84 @@
+
+import json
+
+from openai import OpenAI
+
+key=#enter you apikey better store it some where else and give it a call from here
+
+client=OpenAI(api_key=key)
+
+def get_completion(prompt,functions, model="gpt-3.5-turbo-0613"):
+    messages = [{"role": "user", "content": prompt}]
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0,
+        functions=functions,
+        function_call="auto",
+       
+    )
+    return response.choices[0].message.content
+
+
+def get_learning_schedule(skill, days):
+    prompt = "create me learning schedule for topic " + skill + " to learn in " + days + " days make sure to cover all the important skills in it"
+    messages = [{"role": "user", "content": prompt}]
+    functions = [
+        {
+            "name": "learning_schedule",
+            "description": f"create learning plan for {skill} for {days} days make sure to add all the important topics to learn {skill} in {days} days, make sure complete response is in markdown format also give proper formatting for heading and table and code",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "schedule": {
+                        "type": "object",
+                        "description": f"For each {days} days, give me the list of things to do to learn {skill}",
+                        "properties": {
+                            "day": {
+                                "description": f"The number of days topics will be listed for learning {skill}",
+                                "type": "integer"
+                            },
+                            "topics": {
+                                "description": f"List of things to complete learning for the respective day for the subject {skill}",
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "required": ["schedule"]
+        }
+    ]
+    try:
+    # Assuming client is your OpenAI client instance
+      response = client.chat.completions.create(
+          model="gpt-3.5-turbo-0613",
+          messages=messages,
+          functions=functions,
+          function_call="auto",
+      )
+      
+      # Accessing the response according to the API's documentation
+      choices = response.choices
+
+      if choices:
+          response_message = choices[0].message
+          
+          if response_message.function_call:
+              function_args = json.loads(response_message.function_call.arguments)
+              # Assuming 'schedule' key exists in function_args
+              schedule = function_args["schedule"]
+              for sh in schedule:
+                print("Day:"+str(sh["day"]))
+                print("Topics :")
+                for i in sh["topics"]:
+                    print(" "*4+str(sh["topics"].index(i)+1)+"."+i)
+              return
+    except Exception as e:  # Catch all exceptions
+        print(e)
+
+#eg.
+#get_learning_schedule("docker","10")
